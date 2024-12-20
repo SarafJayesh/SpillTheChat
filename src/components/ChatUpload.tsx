@@ -12,29 +12,72 @@ export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }
   const [success, setSuccess] = useState(false);
 
   const processFile = async (file: File) => {
-    if (file.type !== 'text/plain') {
-      setError('Please upload a WhatsApp chat export file (.txt)');
-      return;
-    }
-
     try {
       setIsUploading(true);
       setError('');
       setSuccess(false);
+
+      // Debug file info
+      console.log('File info:', {
+        name: file.name,
+        size: file.size,
+        type: file.type
+      });
+
+      // Read file in chunks if it's large
+      if (file.size > 1024 * 1024) { // If larger than 1MB
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          const content = e.target?.result as string;
+          processContent(content);
+        };
+        reader.readAsText(file, 'utf-8'); // Explicitly specify UTF-8
+      } else {
+        const content = await file.text();
+        processContent(content);
+      }
+    } catch (err) {
+      console.error('Error processing file:', err);
+      setError('Error reading file. Please try again.');
+    }
+  };
+
+  const processContent = (content: string) => {
+    try {
+      // Debug content
+      console.log('Content preview:', {
+        length: content.length,
+        firstChars: content.slice(0, 100),
+        containsSpecialChars: /[^\x00-\x7F]/g.test(content), // Check for non-ASCII chars
+        lineEndingType: content.includes('\r\n') ? 'CRLF' : 'LF'
+      });
+
+      // Normalize line endings
+      const normalizedContent = content.replace(/\r\n/g, '\n');
       
-      const content = await file.text();
+      // Split into lines and filter out empty ones
+      const lines = normalizedContent.split('\n').filter(line => line.trim());
       
-      // Basic validation that it's a WhatsApp chat
-      if (!content.includes('[') || !content.includes(']:')) {
-        setError('This doesn\'t look like a WhatsApp chat export. Please check the file and try again.');
+      // More permissive validation
+      const whatsappPattern = /\d{2}\/\d{2}\/\d{2},\s\d{2}:\d{2}\s-\s[^:]+:/;
+      const validLines = lines.filter(line => whatsappPattern.test(line.trim()));
+      
+      console.log('Validation results:', {
+        totalLines: lines.length,
+        validLines: validLines.length,
+        sampleValidLine: validLines[0]
+      });
+
+      if (validLines.length === 0) {
+        setError('No valid WhatsApp chat messages found in the file.');
         return;
       }
 
-      onUpload(content);
+      onUpload(normalizedContent);
       setSuccess(true);
     } catch (err) {
-      setError('Error reading file. Please try again.');
-      console.error(err);
+      console.error('Error in content processing:', err);
+      setError('Error processing chat content. Please try again.');
     } finally {
       setIsUploading(false);
     }
@@ -88,8 +131,15 @@ export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }
               <AlertDescription>{error}</AlertDescription>
             </Alert>
           )}
+
+          {isUploading && (
+            <p className="text-sm text-gray-500">
+              Processing your chat file... This might take a moment for larger files.
+            </p>
+          )}
         </div>
       </CardContent>
     </Card>
   );
 }
+
