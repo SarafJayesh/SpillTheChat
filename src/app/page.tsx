@@ -8,3 +8,21 @@ export default function Home() {
       </main>
     )
   }
+
+import { ChatUpload } from '@/components/ChatUpload';
+
+export default function Home() {
+  const handleUpload = (content: string) => {
+    // We'll handle chat processing here
+    console.log('Chat content received:', content.slice(0, 100));
+  };
+
+  return (
+    <main className="container mx-auto p-4">
+      <div className="max-w-4xl mx-auto py-12">
+        <h1 className="text-4xl font-bold text-center mb-8">SpillTheChat</h1>
+        <ChatUpload onUpload={handleUpload} />
+      </div>
+    </main>
+  );
+}
