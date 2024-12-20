@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from 'react';
-import { Upload, AlertCircle } from 'lucide-react';
+import { Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }) {
   const [error, setError] = useState('');
   const [isUploading, setIsUploading] = useState(false);
+  const [success, setSuccess] = useState(false);
 
   const processFile = async (file: File) => {
     if (file.type !== 'text/plain') {
@@ -18,8 +19,19 @@ export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }
 
     try {
       setIsUploading(true);
+      setError('');
+      setSuccess(false);
+      
       const content = await file.text();
+      
+      // Basic validation that it's a WhatsApp chat
+      if (!content.includes('[') || !content.includes(']:')) {
+        setError('This doesn\'t look like a WhatsApp chat export. Please check the file and try again.');
+        return;
+      }
+
       onUpload(content);
+      setSuccess(true);
     } catch (err) {
       setError('Error reading file. Please try again.');
       console.error(err);
@@ -39,10 +51,24 @@ export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }
             </p>
           </div>
 
-          <label className="flex flex-col items-center justify-center w-full h-32 border-2 border-dashed border-gray-300 rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100 transition-colors">
+          <label 
+            className={`
+              flex flex-col items-center justify-center 
+              w-full h-32 border-2 border-dashed rounded-lg 
+              cursor-pointer transition-colors
+              ${isUploading ? 'bg-gray-100' : 'bg-gray-50 hover:bg-gray-100'}
+              ${success ? 'border-green-300' : 'border-gray-300'}
+            `}
+          >
             <div className="flex flex-col items-center justify-center pt-5 pb-6">
-              <Upload className="w-8 h-8 mb-2 text-gray-400" />
-              <p className="text-sm text-gray-500">Click to upload or drag and drop</p>
+              {success ? (
+                <CheckCircle2 className="w-8 h-8 mb-2 text-green-500" />
+              ) : (
+                <Upload className={`w-8 h-8 mb-2 ${isUploading ? 'text-gray-400' : 'text-gray-500'}`} />
+              )}
+              <p className="text-sm text-gray-500">
+                {isUploading ? 'Processing...' : success ? 'Chat uploaded successfully!' : 'Click to upload or drag and drop'}
+              </p>
             </div>
             <input
               type="file"
@@ -52,6 +78,7 @@ export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }
                 const file = e.target.files?.[0];
                 if (file) processFile(file);
               }}
+              disabled={isUploading}
             />
           </label>
 
@@ -60,12 +87,6 @@ export function ChatUpload({ onUpload }: { onUpload: (content: string) => void }
               <AlertCircle className="h-4 w-4" />
               <AlertDescription>{error}</AlertDescription>
             </Alert>
-          )}
-
-          {isUploading && (
-            <div className="text-sm text-gray-500">
-              Processing your chat...
-            </div>
           )}
         </div>
       </CardContent>
