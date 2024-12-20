@@ -1,8 +1,9 @@
+"use client";
+
 import { ChatUpload } from '@/components/ChatUpload';
 
 export default function Home() {
   const handleUpload = (content: string) => {
-    // We'll handle chat processing here
     console.log('Chat content received:', content.slice(0, 100));
   };
 
