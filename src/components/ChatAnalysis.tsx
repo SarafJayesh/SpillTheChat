@@ -61,7 +61,7 @@ export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
     const emojiRegex = /[\u{1F300}-\u{1F6FF}\u{1F900}-\u{1F9FF}\u{2600}-\u{26FF}\u{2700}-\u{27BF}]/gu;
 
     lines.forEach(line => {
-      const match = line.match(/^\[(\d{1,2}\/\d{1,2}\/\d{2,4}),\s(\d{1,2}:\d{2}:\d{2})\]\s([^:]+):\s(.+)/);
+      const match = line.match(/^(\d{1,2}\/\d{1,2}\/\d{2}),\s(\d{1,2}:\d{2})\s-\s([^:]+):\s*(.*)/);
       
       if (match) {
         const [_, date, time, name, message] = match;
