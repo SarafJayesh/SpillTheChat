@@ -3,10 +3,17 @@
 import { useState, useEffect } from 'react';
 import { ChatAnalyticsManager } from '../lib/ChatAnalyticsManager';
 import { PersonalityProcessor } from '../processors/PersonalityProcessor';
-import { ProcessedResult } from '../types/chat';
+import { 
+  ProcessedResult, 
+  PersonalityProcessedResult,
+  BasicStatsProcessedResult,
+  PersonalityProfile
+} from '../types/chat';
+
+type ResultsMap = Map<string, ProcessedResult>;
 
 export function useChatAnalytics(chatContent: string | null) {
-  const [results, setResults] = useState<Map<string, ProcessedResult>>(new Map());
+  const [results, setResults] = useState<ResultsMap>(new Map());
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<Error | null>(null);
 
@@ -40,8 +47,10 @@ export function useChatAnalytics(chatContent: string | null) {
     results,
     loading,
     error,
-    // Helper functions to access specific results
-    getPersonalityProfiles: () => results.get('personality')?.data,
-    getBasicStats: () => results.get('basic')?.data,
+    // Helper functions with proper typing
+    getPersonalityProfiles: () => 
+      (results.get('personality') as PersonalityProcessedResult)?.data,
+    getBasicStats: () => 
+      (results.get('basic') as BasicStatsProcessedResult)?.data,
   };
 }

@@ -14,11 +14,12 @@ import {
   Award, 
   Zap 
 } from 'lucide-react';
+import { PersonalityProfile as ProfileData } from '../types/chat';
 
 interface PersonalityProfileProps {
   userId: string;
-  profile: any; // We'll type this properly later
-  metrics: any;
+  profile: ProfileData;
+  metrics: ProfileData['metrics']; // Using the metrics type from ProfileData
 }
 
 export function PersonalityProfile({ 
@@ -26,6 +27,8 @@ export function PersonalityProfile({
   profile, 
   metrics 
 }: PersonalityProfileProps) {
+  if (!profile) return null;
+
   return (
     <div className="space-y-6">
       {/* Primary Archetype Card */}
@@ -77,7 +80,7 @@ export function PersonalityProfile({
                   Special Abilities
                 </h4>
                 <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                  {profile.specialAbilities.map((ability: string) => (
+                  {profile.specialAbilities.map((ability) => (
                     <div 
                       key={ability}
                       className="flex items-center space-x-2 bg-blue-50 p-2 rounded-lg"
@@ -97,7 +100,7 @@ export function PersonalityProfile({
                   Secondary Traits
                 </h4>
                 <div className="flex flex-wrap gap-2">
-                  {profile.archetype.secondary.map((archetype: string) => (
+                  {profile.archetype.secondary.map((archetype) => (
                     <span 
                       key={archetype}
                       className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
@@ -142,5 +145,3 @@ export function PersonalityProfile({
     </div>
   );
 }
-
-export default PersonalityProfile;

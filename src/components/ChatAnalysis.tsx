@@ -336,10 +336,10 @@ export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
       )}
 
       {/* Personality Profiles Section */}
-      {activeTab === 'profiles' && profiles && (
+      {activeTab === 'profiles' && profiles && profiles.size > 0 && (
         <Section>
           {Array.from(profiles.entries()).map(([userId, profile]: [string, ProfileData]) => (
-            <PersonalityProfile
+            profile && <PersonalityProfile
               key={userId}
               userId={userId}
               profile={profile}
