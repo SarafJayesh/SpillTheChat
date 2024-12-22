@@ -31,12 +31,15 @@ export class PersonalityProcessor implements AnalyticsProcessor {
   dependencies = ['basic'];  // Requires basic stats processor first
 
   async process(data: AnalyticsData): Promise<ProcessedResult> {
+    console.log('Starting personality processing with data:', data);
     const profiles = new Map<string, PersonalityProfile>();
-
+  
     for (const [userId, participant] of data.participants) {
+      console.log(`Processing participant ${userId}`, participant);
       profiles.set(userId, await this.analyzeParticipant(participant, data));
     }
-
+  
+    console.log('Finished personality processing, profiles:', profiles);
     return {
       type: this.type,
       timestamp: new Date(),

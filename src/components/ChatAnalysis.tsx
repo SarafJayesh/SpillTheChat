@@ -7,6 +7,7 @@ import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContai
 import { PersonalityProfile } from './PersonalityProfile';
 import { useChatAnalytics } from '@/hooks/useChatAnalytics';
 
+
 const COLORS = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
 
 interface ChatAnalysisProps {
@@ -86,10 +87,13 @@ export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
   const [profiles, setProfiles] = React.useState<Map<string, ProfileData> | null>(null);
 
   React.useEffect(() => {
-    if (results.get('personality')) {
-      setProfiles(results.get('personality')?.data as Map<string, ProfileData>);
+    const personalityResult = results.get('personality');
+    if (personalityResult && personalityResult.data) {
+      setProfiles(personalityResult.data as Map<string, ProfileData>);
     }
-  }, [results]);if (loading) {
+  }, [results]);
+
+  if (loading) {
     return (
       <div className="flex justify-center items-center min-h-[400px]">
         <div className="text-center">
@@ -338,14 +342,17 @@ export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
       {/* Personality Profiles Section */}
       {activeTab === 'profiles' && profiles && profiles.size > 0 && (
         <Section>
-          {Array.from(profiles.entries()).map(([userId, profile]: [string, ProfileData]) => (
-            profile && <PersonalityProfile
-              key={userId}
-              userId={userId}
-              profile={profile}
-              metrics={profile.metrics}
-            />
-          ))}
+          {Array.from(profiles.entries()).map(([userId, profile]: [string, ProfileData]) => {
+            if (!profile) return null;  // Add safety check
+            return (
+              <PersonalityProfile
+                key={userId}
+                userId={userId}
+                profile={profile}
+                metrics={profile.metrics}
+              />
+            );
+          })}
         </Section>
       )}
 

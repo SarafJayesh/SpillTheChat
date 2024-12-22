@@ -83,22 +83,24 @@ import {
     }
   
     async processChat(rawChat: string): Promise<Map<string, ProcessedResult>> {
-      // Parse raw chat into structured data
+      console.log('Starting chat processing');
       this.data = await this.parseChat(rawChat);
+      console.log('Parsed chat data:', this.data);
       
-      // Process in dependency order
       for (const processorType of this.processingOrder) {
+        console.log(`Running processor: ${processorType}`);
         const processor = this.processors.get(processorType);
         if (processor) {
           try {
             const result = await processor.process(this.data);
+            console.log(`Processor ${processorType} result:`, result);
             this.results.set(processorType, result);
           } catch (error) {
             console.error(`Error in processor ${processorType}:`, error);
           }
         }
       }
-  
+    
       return this.results;
     }
   

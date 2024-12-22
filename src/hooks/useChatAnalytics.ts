@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { ChatAnalyticsManager } from '../lib/ChatAnalyticsManager';
 import { PersonalityProcessor } from '../processors/PersonalityProcessor';
+import { BasicStatsProcessor } from '../processors/BasicStatsProcessor';
 import { 
   ProcessedResult, 
   PersonalityProcessedResult,
@@ -28,6 +29,7 @@ export function useChatAnalytics(chatContent: string | null) {
         const manager = new ChatAnalyticsManager();
         
         // Register processors
+        manager.registerProcessor(new BasicStatsProcessor());
         manager.registerProcessor(new PersonalityProcessor());
         
         // Process chat
@@ -46,11 +48,6 @@ export function useChatAnalytics(chatContent: string | null) {
   return {
     results,
     loading,
-    error,
-    // Helper functions with proper typing
-    getPersonalityProfiles: () => 
-      (results.get('personality') as PersonalityProcessedResult)?.data,
-    getBasicStats: () => 
-      (results.get('basic') as BasicStatsProcessedResult)?.data,
+    error
   };
 }
