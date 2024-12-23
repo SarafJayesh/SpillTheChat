@@ -1,21 +1,18 @@
 // types/chat.ts
 
-// Raw message after initial parsing
+import { PersonalityProfile } from './personality';
+
 export interface ParsedMessage {
   timestamp: Date;
   sender: string;
   content: string;
-  type: 'text' | 'media' | 'deleted';
-  replyTo?: string;  // Message this is replying to
+  type: 'media' | 'text';
   metadata: {
     hasEmoji: boolean;
     isForwarded: boolean;
-    quotedMessage?: string;
-    mediaType?: string;
   };
 }
 
-// Core data about a participant
 export interface ParticipantData {
   id: string;
   name: string;
@@ -24,101 +21,93 @@ export interface ParticipantData {
   firstMessage: Date;
   lastMessage: Date;
   activeHours: Set<number>;
-  activeDays: Set<string>; // ISO date strings
+  activeDays: Set<string>;
 }
 
-// Time-based statistics
-export interface TimeframeData {
-  hourly: Map<number, number>;     // Hour -> message count
-  daily: Map<string, number>;      // ISO date -> message count
-  weekly: Map<number, number>;     // Week number -> message count
-  monthly: Map<string, number>;    // Month (YYYY-MM) -> message count
-}
-
-// Interaction patterns
-export interface InteractionData {
-  threads: ChatThread[];
-  responseTimes: Map<string, number[]>;  // User -> array of response times
-  mentions: Map<string, string[]>;       // User -> array of users mentioned
-  interactions: Map<string, Set<string>>; // User -> set of users interacted with
-}
-
-// Represents a conversation thread
-export interface ChatThread {
-  id: string;
+export interface Thread {
   startMessage: ParsedMessage;
-  participants: Set<string>;
   messages: ParsedMessage[];
-  duration: number;  // In milliseconds
-  intensity: number; // Messages per minute
 }
 
-// Core analytics data container
 export interface AnalyticsData {
   messages: ParsedMessage[];
   participants: Map<string, ParticipantData>;
-  timeframes: TimeframeData;
-  interactions: InteractionData;
-}
-
-// Make ProcessedResult generic to improve type safety
-export interface ProcessedResult<T = any> {
-  type: string;
-  timestamp: Date;
-  data: T;
-}
-
-// Base interface for all analytics processors
-export interface AnalyticsProcessor {
-  type: string;
-  dependencies: string[];
-  process(data: AnalyticsData): Promise<ProcessedResult>;
-  update(newData: AnalyticsData): Promise<ProcessedResult>;
-}
-
-// Analytics Service interface
-export interface AnalyticsService {
-  name: string;
-  analyze(data: AnalyticsData): Promise<ProcessedResult>;
-  isAvailable(): boolean;
-}
-
-// Personality specific types
-export interface PersonalityProfile {
-  archetype: {
-    primary: string;
-    secondary: string[];
+  timeframes: {
+    hourly: Map<number, number>;
+    daily: Map<string, number>;
+    weekly: Map<number, number>;
+    monthly: Map<string, number>;
   };
-  traits: {
-    activityPattern: string;
-    communicationStyle: string;
-    groupRole: string;
+  interactions: {
+    threads: Thread[];
+    responseTimes: Map<string, number[]>;
+    mentions: Map<string, string[]>;
+    interactions: Map<string, Set<string>>;
   };
-  metrics: {
-    responseTime: number;
-    messageLength: number;
-    activityConsistency: number;
-    socialConnection: number;
-  };
-  specialAbilities: string[];
 }
 
-// Specific ProcessedResult types
-export interface PersonalityProcessedResult extends ProcessedResult<Map<string, PersonalityProfile>> {
-  type: 'personality';
+export interface TimeDistribution {
+  hour: number;
+  count: number;
 }
 
-export interface BasicStatsProcessedResult extends ProcessedResult<{
+export interface ChatStats {
   totalMessages: number;
   participants: string[];
   messagesByParticipant: Record<string, number>;
   mediaCount: number;
-  messagesByDate: { date: string; count: number; }[];
-  timeDistribution: { hour: number; count: number; }[];
+  messagesByDate: MessageDate[];
+  timeDistribution: TimeDistribution[];
   emojiCount: Record<string, number>;
   averageMessageLength: number;
-  mostActiveDate: { date: string; count: number; };
+  mostActiveDate: MessageDate;
   lateNightPercentage: number;
-}> {
-  type: 'basic';
+}
+
+export interface ProcessedResult {
+  type: string;
+  timestamp: Date;
+  data: ChatStats | Map<string, PersonalityProfile> | BasicStatsProcessedResult | any;
+}
+
+export interface AnalyticsProcessor {
+  type: string;
+  dependencies: string[];
+  process(data: AnalyticsData): Promise<ProcessedResult>;
+  update?(newData: AnalyticsData): Promise<ProcessedResult>;
+}
+
+export interface BasicStatsProcessedResult {
+  totalMessages: number;
+  participants: string[];
+  messagesByParticipant: Record<string, number>;
+  mediaCount: number;
+  messagesByDate: MessageDate[];
+  timeDistribution: TimeDistribution[];
+  emojiCount: Record<string, number>;
+  averageMessageLength: number;
+  mostActiveDate: MessageDate;
+  lateNightPercentage: number;
+  activityHeatmap: ActivityHeatmapData[];
+  moodPatterns: MoodData[];
+}
+
+export interface MessageDate {
+  date: string;
+  count: number;
+}
+
+
+export interface ActivityHeatmapData {
+  date: string;
+  hour: number;
+  count: number;
+  dayOfWeek: number;
+}
+
+export interface MoodData {
+  timestamp: string;
+  sentiment: number;
+  mood: 'positive' | 'negative' | 'neutral';
+  intensity: number;
 }

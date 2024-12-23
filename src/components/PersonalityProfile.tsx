@@ -12,21 +12,17 @@ import {
   Clock, 
   MessageCircle, 
   Award, 
-  Zap 
+  Zap,
+  Heart 
 } from 'lucide-react';
-import { PersonalityProfile as ProfileData } from '../types/chat';
+import { PersonalityProfile as ProfileData } from '../types/personality';
 
 interface PersonalityProfileProps {
   userId: string;
   profile: ProfileData;
-  metrics: ProfileData['metrics']; // Using the metrics type from ProfileData
 }
 
-export function PersonalityProfile({ 
-  userId, 
-  profile, 
-  metrics 
-}: PersonalityProfileProps) {
+export function PersonalityProfile({ userId, profile }: PersonalityProfileProps) {
   if (!profile) return null;
 
   return (
@@ -39,9 +35,12 @@ export function PersonalityProfile({
               <User className="w-6 h-6 text-white" />
             </div>
             <div>
-              <CardTitle className="text-xl">{userId}</CardTitle>
+              <CardTitle className="text-xl flex items-center gap-2">
+                {userId}
+                <span className="text-2xl">{profile.characterClass.icon}</span>
+              </CardTitle>
               <p className="text-sm text-gray-500">
-                {profile.archetype.primary}
+                {profile.characterClass.name} - {profile.characterClass.description}
               </p>
             </div>
           </div>
@@ -93,55 +92,93 @@ export function PersonalityProfile({
               </div>
             )}
 
-            {/* Secondary Archetypes */}
-            {profile.archetype.secondary.length > 0 && (
+            {/* Achievements Section */}
+            {profile.achievements.length > 0 && (
               <div className="mt-6">
                 <h4 className="text-sm font-medium text-gray-500 mb-3">
-                  Secondary Traits
+                  Achievements
                 </h4>
-                <div className="flex flex-wrap gap-2">
-                  {profile.archetype.secondary.map((archetype) => (
-                    <span 
-                      key={archetype}
-                      className="px-3 py-1 bg-gray-100 text-gray-700 rounded-full text-sm"
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                  {profile.achievements.map((achievement) => (
+                    <div 
+                      key={achievement.id}
+                      className="flex items-center space-x-3 p-3 bg-white rounded-lg shadow-sm border"
                     >
-                      {archetype}
-                    </span>
+                      <span className="text-2xl">{achievement.icon}</span>
+                      <div>
+                        <p className="font-medium text-sm">{achievement.name}</p>
+                        <p className="text-xs text-gray-500">{achievement.description}</p>
+                        <div className="mt-1 w-full bg-gray-100 rounded-full h-1">
+                          <div 
+                            className="bg-blue-500 h-1 rounded-full transition-all duration-500"
+                            style={{ width: `${achievement.progress}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
                   ))}
                 </div>
               </div>
             )}
 
-            {/* Metrics Section */}
+            {/* Activity Metrics */}
             <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-4">
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-500">
-                  {Math.round(metrics.responseTime)}s
+                  {Math.round(profile.metrics.responseTime)}s
                 </p>
                 <p className="text-sm text-gray-500">Avg Response Time</p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-500">
-                  {Math.round(metrics.activityConsistency)}%
+                  {Math.round(profile.metrics.activityConsistency)}%
                 </p>
                 <p className="text-sm text-gray-500">Activity Consistency</p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-500">
-                  {Math.round(metrics.messageLength)}
+                  {Math.round(profile.metrics.messageLength)}
                 </p>
                 <p className="text-sm text-gray-500">Avg Message Length</p>
               </div>
               <div className="text-center p-3 bg-gray-50 rounded-lg">
                 <p className="text-2xl font-bold text-blue-500">
-                  {Math.round(metrics.socialConnection)}%
+                  {Math.round(profile.metrics.socialConnection)}%
                 </p>
                 <p className="text-sm text-gray-500">Social Connection</p>
               </div>
             </div>
+
+            {/* Highlights Section */}
+            {profile.highlights.length > 0 && (
+              <div className="mt-6">
+                <h4 className="text-sm font-medium text-gray-500 mb-3">
+                  Memorable Moments
+                </h4>
+                <div className="space-y-3">
+                  {profile.highlights.map((highlight, index) => (
+                    <div 
+                      key={index}
+                      className="p-3 bg-white rounded-lg shadow-sm border"
+                    >
+                      <div className="flex items-center gap-2 mb-1">
+                        <Heart className="w-4 h-4 text-blue-500" />
+                        <p className="text-sm font-medium">{highlight.type}</p>
+                      </div>
+                      <p className="text-sm text-gray-600">{highlight.description}</p>
+                      {highlight.context && (
+                        <p className="text-xs text-gray-500 mt-1">{highlight.context}</p>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
     </div>
   );
 }
+
+export default PersonalityProfile;

@@ -1,4 +1,4 @@
-// processors/PersonalityProcessor.ts
+// src/processors/PersonalityProcessor.ts
 
 import { 
   AnalyticsProcessor, 
@@ -6,40 +6,28 @@ import {
   ProcessedResult,
   ParticipantData 
 } from '../types/chat';
-
-interface PersonalityProfile {
-  archetype: {
-    primary: string;
-    secondary: string[];
-  };
-  traits: {
-    activityPattern: string;
-    communicationStyle: string;
-    groupRole: string;
-  };
-  metrics: {
-    responseTime: number;
-    messageLength: number;
-    activityConsistency: number;
-    socialConnection: number;
-  };
-  specialAbilities: string[];
-}
+import { 
+  PersonalityProfile,
+  CharacterClass,
+  ActivityMetrics,
+  CommunicationMetrics,
+  InteractionMetrics,
+  Highlight,
+  CHARACTER_CLASSES,
+  ACHIEVEMENTS
+} from '../types/personality';
 
 export class PersonalityProcessor implements AnalyticsProcessor {
   type = 'personality';
-  dependencies = ['basic'];  // Requires basic stats processor first
+  dependencies = ['basic'];
 
   async process(data: AnalyticsData): Promise<ProcessedResult> {
-    console.log('Starting personality processing with data:', data);
     const profiles = new Map<string, PersonalityProfile>();
   
     for (const [userId, participant] of data.participants) {
-      console.log(`Processing participant ${userId}`, participant);
       profiles.set(userId, await this.analyzeParticipant(participant, data));
     }
   
-    console.log('Finished personality processing, profiles:', profiles);
     return {
       type: this.type,
       timestamp: new Date(),
@@ -51,219 +39,255 @@ export class PersonalityProcessor implements AnalyticsProcessor {
     participant: ParticipantData, 
     data: AnalyticsData
   ): Promise<PersonalityProfile> {
-    const activityPattern = this.determineActivityPattern(participant);
-    const communicationStyle = this.analyzeCommunicationStyle(participant);
-    const metrics = this.calculateMetrics(participant, data);
-    const specialAbilities = this.detectSpecialAbilities(participant, data);
+    const characterClass = this.determineCharacterClass(participant);
+    const activityMetrics = this.calculateActivityMetrics(participant);
+    const communicationMetrics = this.calculateCommunicationMetrics(participant);
+    const interactionMetrics = this.calculateInteractionMetrics(participant, data);
+    const achievements = this.calculateAchievements(participant, data);
+    const highlights = this.generateHighlights(participant, data);
 
     return {
-      archetype: {
-        primary: this.determinePrimaryArchetype(activityPattern, communicationStyle, metrics),
-        secondary: this.determineSecondaryArchetypes(participant, data)
-      },
+      characterClass,
       traits: {
-        activityPattern,
-        communicationStyle,
-        groupRole: this.determineGroupRole(participant, data)
+        activityPattern: this.determineActivityPattern(activityMetrics),
+        communicationStyle: this.determineCommunicationStyle(communicationMetrics),
+        groupRole: this.determineGroupRole(interactionMetrics)
       },
-      metrics,
-      specialAbilities
+      metrics: {
+        responseTime: communicationMetrics.responseTime,
+        messageLength: communicationMetrics.averageMessageLength,
+        activityConsistency: activityMetrics.periodActivity.morning + 
+                           activityMetrics.periodActivity.afternoon +
+                           activityMetrics.periodActivity.evening +
+                           activityMetrics.periodActivity.night,
+        socialConnection: interactionMetrics.engagementScore
+      },
+      specialAbilities: this.determineSpecialAbilities(participant, activityMetrics, communicationMetrics, interactionMetrics),
+      achievements,
+      activityMetrics,
+      communicationMetrics,
+      interactionMetrics,
+      highlights
     };
   }
 
-  private determineActivityPattern(participant: ParticipantData): string {
-    const hourCounts = new Array(24).fill(0);
-    participant.messages.forEach(msg => {
-      hourCounts[msg.timestamp.getHours()]++;
-    });
-
-    const nightActivity = hourCounts.slice(22).concat(hourCounts.slice(0, 4))
-      .reduce((a, b) => a + b, 0);
-    const morningActivity = hourCounts.slice(5, 11)
-      .reduce((a, b) => a + b, 0);
-    const dayActivity = hourCounts.slice(11, 18)
-      .reduce((a, b) => a + b, 0);
-    const eveningActivity = hourCounts.slice(18, 22)
-      .reduce((a, b) => a + b, 0);
-
-    const total = participant.messageCount;
-    const nightPercentage = (nightActivity / total) * 100;
-    const morningPercentage = (morningActivity / total) * 100;
-
-    if (nightPercentage > 20) return 'Night Owl';
-    if (morningPercentage > 15) return 'Early Bird';
-    if (dayActivity > eveningActivity) return 'Day Hawk';
-    return 'Evening Person';
-  }
-
-  private analyzeCommunicationStyle(participant: ParticipantData): string {
-    const messageLengths = participant.messages.map(m => m.content.length);
-    const avgLength = messageLengths.reduce((a, b) => a + b, 0) / messageLengths.length;
-    const emojiCount = participant.messages.filter(m => m.metadata.hasEmoji).length;
-    const emojiPercentage = (emojiCount / participant.messageCount) * 100;
-
-    if (avgLength > 100) return 'Detailed Communicator';
-    if (emojiPercentage > 30) return 'Expressive Communicator';
-    if (avgLength < 20) return 'Concise Communicator';
-    return 'Balanced Communicator';
-  }
-
-  private calculateMetrics(participant: ParticipantData, data: AnalyticsData): {
-    responseTime: number;
-    messageLength: number;
-    activityConsistency: number;
-    socialConnection: number;
-  } {
-    // Calculate average response time
-    const responseTimes = data.interactions.responseTimes.get(participant.id) || [];
-    const avgResponseTime = responseTimes.length > 0
-      ? responseTimes.reduce((a, b) => a + b, 0) / responseTimes.length
-      : 0;
-
-    // Calculate message length metrics
-    const messageLengths = participant.messages.map(m => m.content.length);
-    const avgMessageLength = messageLengths.reduce((a, b) => a + b, 0) / messageLengths.length;
-
-    // Calculate activity consistency
-    const daysActive = participant.activeDays.size;
-    const totalDays = Math.ceil(
-      (participant.lastMessage.getTime() - participant.firstMessage.getTime()) / (1000 * 60 * 60 * 24)
-    );
-    const activityConsistency = (daysActive / totalDays) * 100;
-
-    // Calculate social connection score
-    const interactions = data.interactions.interactions.get(participant.id) || new Set();
-    const totalParticipants = data.participants.size;
-    const socialConnection = (interactions.size / (totalParticipants - 1)) * 100;
-
-    return {
-      responseTime: avgResponseTime,
-      messageLength: avgMessageLength,
-      activityConsistency,
-      socialConnection
-    };
-  }
-
-  private detectSpecialAbilities(participant: ParticipantData, data: AnalyticsData): string[] {
-    const abilities: string[] = [];
-    const metrics = this.calculateMetrics(participant, data);
-
-    // Conversation Starter
-    const threadStarts = data.interactions.threads.filter(
-      thread => thread.startMessage.sender === participant.id
-    ).length;
-    if (threadStarts / participant.messageCount > 0.25) {
-      abilities.push('Conversation Starter');
-    }
-
-    // Quick Responder
-    if (metrics.responseTime < 120) { // Less than 2 minutes average
-      abilities.push('Quick Responder');
-    }
-
-    // Consistent Contributor
-    if (metrics.activityConsistency > 70) {
-      abilities.push('Consistent Contributor');
-    }
-
-    // Social Connector
-    if (metrics.socialConnection > 80) {
-      abilities.push('Social Connector');
-    }
-
-    // Night Warrior
+  private determineCharacterClass(participant: ParticipantData): CharacterClass {
+    // Simple logic for demo - you can make this more sophisticated
     const nightMessages = participant.messages.filter(msg => {
       const hour = msg.timestamp.getHours();
       return hour >= 22 || hour <= 4;
     }).length;
-    if ((nightMessages / participant.messageCount) > 0.3) {
-      abilities.push('Night Warrior');
+
+    const nightPercentage = (nightMessages / participant.messages.length) * 100;
+
+    if (nightPercentage > 30) {
+      return {
+        id: 'NIGHT_GUARDIAN',
+        ...CHARACTER_CLASSES.NIGHT_GUARDIAN
+      };
+    }
+
+    const emojiMessages = participant.messages.filter(msg => msg.metadata.hasEmoji).length;
+    const emojiPercentage = (emojiMessages / participant.messages.length) * 100;
+
+    if (emojiPercentage > 40) {
+      return {
+        id: 'EMOJI_WIZARD',
+        ...CHARACTER_CLASSES.EMOJI_WIZARD
+      };
+    }
+
+    // Default to Social Butterfly
+    return {
+      id: 'SOCIAL_BUTTERFLY',
+      ...CHARACTER_CLASSES.SOCIAL_BUTTERFLY
+    };
+  }
+
+  private calculateActivityMetrics(participant: ParticipantData): ActivityMetrics {
+    const hourlyDistribution = new Array(24).fill(0);
+    const weeklyDistribution = new Array(7).fill(0);
+    let morning = 0, afternoon = 0, evening = 0, night = 0;
+
+    participant.messages.forEach(msg => {
+      const hour = msg.timestamp.getHours();
+      const day = msg.timestamp.getDay();
+
+      hourlyDistribution[hour]++;
+      weeklyDistribution[day]++;
+
+      if (hour >= 5 && hour < 12) morning++;
+      else if (hour >= 12 && hour < 17) afternoon++;
+      else if (hour >= 17 && hour < 22) evening++;
+      else night++;
+    });
+
+    const total = participant.messages.length;
+    return {
+      hourlyDistribution,
+      weeklyDistribution,
+      periodActivity: {
+        morning: (morning / total) * 100,
+        afternoon: (afternoon / total) * 100,
+        evening: (evening / total) * 100,
+        night: (night / total) * 100
+      }
+    };
+  }
+
+  private calculateCommunicationMetrics(participant: ParticipantData): CommunicationMetrics {
+    const messageLengths = participant.messages.map(m => m.content.length);
+    const averageLength = messageLengths.reduce((a, b) => a + b, 0) / messageLengths.length;
+    const variance = messageLengths.reduce((a, b) => a + Math.pow(b - averageLength, 2), 0) / messageLengths.length;
+
+    const emojiCount = new Map<string, number>();
+    participant.messages.forEach(msg => {
+      Array.from(msg.content.matchAll(/[\p{Emoji}]/gu)).forEach(match => {
+        const emoji = match[0];
+        emojiCount.set(emoji, (emojiCount.get(emoji) || 0) + 1);
+      });
+    });
+
+    return {
+      averageMessageLength: averageLength,
+      messageVariability: Math.sqrt(variance),
+      responseTime: 0, // This should be calculated from the data.interactions
+      emojiUsage: {
+        frequency: participant.messages.filter(m => m.metadata.hasEmoji).length / participant.messages.length,
+        favorites: Array.from(emojiCount.entries())
+          .sort(([,a], [,b]) => b - a)
+          .slice(0, 5)
+      },
+      mediaSharing: participant.messages.filter(m => m.type === 'media').length / participant.messages.length
+    };
+  }
+
+  private calculateInteractionMetrics(participant: ParticipantData, data: AnalyticsData): InteractionMetrics {
+    const threads = data.interactions.threads;
+    const responseTimes = data.interactions.responseTimes.get(participant.id) || [];
+    
+    return {
+      initiationRate: threads.filter(t => t.startMessage.sender === participant.id).length / threads.length,
+      responseRate: responseTimes.length / participant.messages.length,
+      engagementScore: this.calculateEngagementScore(participant, data),
+      conversationImpact: this.calculateConversationImpact(participant, data)
+    };
+  }
+
+  private calculateEngagementScore(participant: ParticipantData, data: AnalyticsData): number {
+    // Calculate engagement based on interaction patterns
+    // This is a simplified version - you can make it more sophisticated
+    const interactionSet = data.interactions.interactions.get(participant.id) || new Set();
+    return (interactionSet.size / data.participants.size) * 100;
+  }
+
+  private calculateConversationImpact(participant: ParticipantData, data: AnalyticsData): number {
+    // Calculate how much a participant's messages lead to responses
+    // This is a simplified version - you can make it more sophisticated
+    return participant.messages.length / data.messages.length * 100;
+  }
+
+  private generateHighlights(participant: ParticipantData, data: AnalyticsData): Highlight[] {
+    const highlights: Highlight[] = [];
+
+    // Most active day
+    const messageCounts = new Map<string, number>();
+    participant.messages.forEach(msg => {
+      const date = msg.timestamp.toISOString().split('T')[0];
+      messageCounts.set(date, (messageCounts.get(date) || 0) + 1);
+    });
+
+    const [mostActiveDate, messageCount] = Array.from(messageCounts.entries())
+      .sort(([,a], [,b]) => b - a)[0];
+
+    highlights.push({
+      type: 'moment',
+      timestamp: new Date(mostActiveDate),
+      description: `Most active day with ${messageCount} messages`,
+      impact: 85
+    });
+
+    return highlights;
+  }
+
+  private determineSpecialAbilities(
+    participant: ParticipantData,
+    activityMetrics: ActivityMetrics,
+    communicationMetrics: CommunicationMetrics,
+    interactionMetrics: InteractionMetrics
+  ): string[] {
+    const abilities: string[] = [];
+
+    if (activityMetrics.periodActivity.night > 30) {
+      abilities.push('Night Owl');
+    }
+
+    if (communicationMetrics.emojiUsage.frequency > 0.4) {
+      abilities.push('Emoji Master');
+    }
+
+    if (interactionMetrics.initiationRate > 0.3) {
+      abilities.push('Conversation Starter');
+    }
+
+    if (interactionMetrics.engagementScore > 80) {
+      abilities.push('Social Connector');
     }
 
     return abilities;
   }
 
-  private determinePrimaryArchetype(
-    activityPattern: string,
-    communicationStyle: string,
-    metrics: any
-  ): string {
-    // Combine different factors to determine primary archetype
-    const archetypes = new Map<string, number>();
+  private calculateAchievements(participant: ParticipantData, data: AnalyticsData) {
+    const achievements = [];
     
-    // Activity-based archetypes
-    archetypes.set('Night Owl', 
-      activityPattern === 'Night Owl' ? 100 : 0);
-    archetypes.set('Early Bird', 
-      activityPattern === 'Early Bird' ? 100 : 0);
-    
-    // Communication-based archetypes
-    archetypes.set('Social Butterfly', 
-      metrics.socialConnection > 80 ? 90 : 
-      metrics.socialConnection > 60 ? 70 : 0);
-    archetypes.set('Deep Thinker', 
-      metrics.messageLength > 100 ? 90 :
-      metrics.messageLength > 70 ? 70 : 0);
-    
-    // Return the archetype with highest score
-    return Array.from(archetypes.entries())
-      .sort((a, b) => b[1] - a[1])[0][0];
+    // Speed Demon Achievement
+    if (participant.messages.length > 100) {
+      achievements.push({
+        id: 'SPEED_DEMON',
+        ...ACHIEVEMENTS.SPEED_DEMON,
+        progress: Math.min(participant.messages.length / 100 * 100, 100),
+        unlockedAt: new Date()
+      });
+    }
+
+    // Night Owl Achievement
+    const nightMessages = participant.messages.filter(msg => {
+      const hour = msg.timestamp.getHours();
+      return hour >= 0 && hour < 5;
+    }).length;
+
+    if (nightMessages > 0) {
+      achievements.push({
+        id: 'NIGHT_OWL',
+        ...ACHIEVEMENTS.NIGHT_OWL,
+        progress: Math.min(nightMessages / 1000 * 100, 100),
+        unlockedAt: nightMessages >= 1000 ? new Date() : undefined
+      });
+    }
+
+    return achievements;
   }
 
-  private determineSecondaryArchetypes(
-    participant: ParticipantData,
-    data: AnalyticsData
-  ): string[] {
-    const archetypes: string[] = [];
-    const metrics = this.calculateMetrics(participant, data);
-
-    // Check for secondary characteristics
-    if (metrics.responseTime < 180) {
-      archetypes.push('Quick Responder');
-    }
-    
-    if (participant.messages.filter(m => m.metadata.hasEmoji).length 
-        / participant.messageCount > 0.25) {
-      archetypes.push('Emoji Enthusiast');
-    }
-    
-    const threadStarts = data.interactions.threads
-      .filter(thread => thread.startMessage.sender === participant.id).length;
-    if (threadStarts / data.interactions.threads.length > 0.2) {
-      archetypes.push('Conversation Starter');
-    }
-
-    return archetypes;
+  private determineActivityPattern(metrics: ActivityMetrics): string {
+    const { morning, afternoon, evening, night } = metrics.periodActivity;
+    if (night > 30) return 'Night Owl';
+    if (morning > 40) return 'Early Bird';
+    if (afternoon > 40) return 'Midday Maven';
+    if (evening > 40) return 'Evening Person';
+    return 'Balanced Schedule';
   }
 
-  private determineGroupRole(
-    participant: ParticipantData,
-    data: AnalyticsData
-  ): string {
-    const metrics = this.calculateMetrics(participant, data);
-    const threadStarts = data.interactions.threads
-      .filter(thread => thread.startMessage.sender === participant.id).length;
-    
-    if (threadStarts / data.interactions.threads.length > 0.3) {
-      return 'Leader';
-    }
-    
-    if (metrics.socialConnection > 80) {
-      return 'Connector';
-    }
-    
-    if (metrics.responseTime < 120) {
-      return 'Responder';
-    }
-    
-    if (metrics.messageLength > 100) {
-      return 'Contributor';
-    }
-    
-    return 'Supporter';
+  private determineCommunicationStyle(metrics: CommunicationMetrics): string {
+    if (metrics.emojiUsage.frequency > 0.4) return 'Expressive';
+    if (metrics.averageMessageLength > 100) return 'Detailed';
+    if (metrics.messageVariability > 50) return 'Variable';
+    return 'Concise';
   }
 
-  async update(newData: AnalyticsData): Promise<ProcessedResult> {
-    return await this.process(newData);
+  private determineGroupRole(metrics: InteractionMetrics): string {
+    if (metrics.initiationRate > 0.3) return 'Leader';
+    if (metrics.responseRate > 0.8) return 'Supporter';
+    if (metrics.conversationImpact > 70) return 'Influencer';
+    return 'Contributor';
   }
 }

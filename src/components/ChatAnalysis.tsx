@@ -4,9 +4,10 @@ import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { MessageSquare, Users, Clock, Image as ImageIcon, CalendarDays, Heart, Star, Moon } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
-import { PersonalityProfile } from './PersonalityProfile';
+import { PersonalityProfile as PersonalityProfileComponent } from '@/components/PersonalityProfile';
+import { PersonalityProfile as PersonalityProfileType } from '@/types/personality';
+import { ChatStats } from '@/types/chat';
 import { useChatAnalytics } from '@/hooks/useChatAnalytics';
-
 
 const COLORS = ['#2563eb', '#3b82f6', '#60a5fa', '#93c5fd'];
 
@@ -22,38 +23,6 @@ interface MessageDate {
 interface TimeDistribution {
   hour: number;
   count: number;
-}
-
-interface ChatStats {
-  totalMessages: number;
-  participants: string[];
-  messagesByParticipant: Record<string, number>;
-  mediaCount: number;
-  messagesByDate: MessageDate[];
-  timeDistribution: TimeDistribution[];
-  emojiCount: Record<string, number>;
-  averageMessageLength: number;
-  mostActiveDate: MessageDate;
-  lateNightPercentage: number;
-}
-
-interface ProfileData {
-  archetype: {
-    primary: string;
-    secondary: string[];
-  };
-  traits: {
-    activityPattern: string;
-    communicationStyle: string;
-    groupRole: string;
-  };
-  metrics: {
-    responseTime: number;
-    messageLength: number;
-    activityConsistency: number;
-    socialConnection: number;
-  };
-  specialAbilities: string[];
 }
 
 interface SectionProps {
@@ -84,12 +53,12 @@ const CardSection: React.FC<CardSectionProps> = ({ children, title, description,
 export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
   const { results, loading, error } = useChatAnalytics(chatContent);
   const [activeTab, setActiveTab] = React.useState('overview');
-  const [profiles, setProfiles] = React.useState<Map<string, ProfileData> | null>(null);
+  const [profiles, setProfiles] = React.useState<Map<string, PersonalityProfileType> | null>(null);
 
   React.useEffect(() => {
     const personalityResult = results.get('personality');
     if (personalityResult && personalityResult.data) {
-      setProfiles(personalityResult.data as Map<string, ProfileData>);
+      setProfiles(personalityResult.data as Map<string, PersonalityProfileType>);
     }
   }, [results]);
 
@@ -115,6 +84,324 @@ export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
   const stats = results.get('basic')?.data as ChatStats;
   if (!stats) return null;
 
+  const renderOverviewSection = () => (
+    <Section>
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <Card className="bg-gradient-to-br from-blue-50 to-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-blue-500 rounded-lg">
+                <MessageSquare className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-blue-500">{stats.totalMessages}</p>
+                <p className="text-sm text-gray-500">Total Messages</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-green-50 to-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-green-500 rounded-lg">
+                <Users className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-green-500">{stats.participants.length}</p>
+                <p className="text-sm text-gray-500">Participants</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-purple-50 to-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-purple-500 rounded-lg">
+                <ImageIcon className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-purple-500">{stats.mediaCount}</p>
+                <p className="text-sm text-gray-500">Media Shared</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-br from-orange-50 to-white">
+          <CardContent className="pt-6">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-orange-500 rounded-lg">
+                <Star className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <p className="text-3xl font-bold text-orange-500">{stats.averageMessageLength}</p>
+                <p className="text-sm text-gray-500">Avg Message Length</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <CardSection>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div className="flex items-center space-x-3">
+            <CalendarDays className="w-5 h-5 text-blue-500" />
+            <div>
+              <p className="text-sm text-gray-500">Most Active Date</p>
+              <p className="font-medium">{stats.mostActiveDate.date}</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Moon className="w-5 h-5 text-blue-500" />
+            <div>
+              <p className="text-sm text-gray-500">Late Night Messages</p>
+              <p className="font-medium">{stats.lateNightPercentage}%</p>
+            </div>
+          </div>
+          <div className="flex items-center space-x-3">
+            <Heart className="w-5 h-5 text-blue-500" />
+            <div>
+              <p className="text-sm text-gray-500">Most Used Emoji</p>
+              <p className="font-medium">
+                {Object.entries(stats.emojiCount)
+                  .sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'None'}
+              </p>
+            </div>
+          </div>
+        </div>
+      </CardSection>
+    </Section>
+  );
+
+  const renderActivitySection = () => (
+    <Section>
+      <CardSection
+        title="Daily Message Activity"
+        description="Messages sent per day over time"
+      >
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={stats.messagesByDate}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="date" />
+              <YAxis />
+              <Tooltip />
+              <Line 
+                type="monotone" 
+                dataKey="count" 
+                stroke="#2563eb" 
+                strokeWidth={2}
+                dot={false}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </CardSection>
+
+      <CardSection
+        title="Hourly Activity Distribution"
+        description="When are messages most frequently sent?"
+      >
+        <div className="h-[300px] w-full">
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={stats.timeDistribution}>
+              <CartesianGrid strokeDasharray="3 3" />
+              <XAxis dataKey="hour" />
+              <YAxis />
+              <Tooltip />
+              <Bar dataKey="count" fill="#3b82f6" />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      </CardSection>
+    </Section>
+  );
+
+  const renderParticipantsSection = () => (
+    <Section>
+      <CardSection
+        title="Message Distribution"
+        description="How much each participant contributed"
+      >
+        <div className="h-[300px]">
+          <ResponsiveContainer width="100%" height="100%">
+            <PieChart>
+              <Pie
+                data={Object.entries(stats.messagesByParticipant).map(([name, value]) => ({
+                  name,
+                  value
+                }))}
+                cx="50%"
+                cy="50%"
+                outerRadius={100}
+                fill="#8884d8"
+                dataKey="value"
+                label={({ name, percent }) => 
+                  `${name} (${(percent * 100).toFixed(0)}%)`}
+              >
+                {Object.entries(stats.messagesByParticipant).map((_, index) => (
+                  <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                ))}
+              </Pie>
+              <Tooltip />
+            </PieChart>
+          </ResponsiveContainer>
+        </div>
+      </CardSection>
+
+      <CardSection
+        title="Participant Rankings"
+        description="Total messages sent by each participant"
+      >
+        <div className="space-y-4">
+          {Object.entries(stats.messagesByParticipant)
+            .sort(([, a], [, b]) => (b as number) - (a as number))
+            .map(([name, count], index) => (
+              <div key={name} className="flex items-center space-x-4">
+                <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
+                  {index + 1}
+                </div>
+                <div className="flex-1">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="font-medium">{name}</span>
+                    <span className="text-gray-500">{count} messages</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div
+                      className="bg-blue-500 h-2 rounded-full"
+                      style={{
+                        width: `${(count as number / stats.totalMessages) * 100}%`
+                      }}
+                    />
+                  </div>
+                </div>
+              </div>
+            ))}
+        </div>
+      </CardSection>
+    </Section>
+  );
+
+  const renderProfilesSection = () => {
+    if (!profiles || profiles.size === 0) return null;
+
+    return (
+      <Section>
+        {Array.from(profiles.entries()).map(([userId, profile]) => (
+          <PersonalityProfileComponent
+            key={userId}
+            userId={userId}
+            profile={profile}
+          />
+        ))}
+      </Section>
+    );
+  };
+
+  const renderInsightsSection = () => (
+    <Section>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardSection
+          title="Time Patterns"
+          description="When is the chat most active?"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Moon className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Night Owl Index</p>
+                <p className="font-medium">{stats.lateNightPercentage}% messages sent late night</p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-blue-100 rounded-lg">
+                <Clock className="w-5 h-5 text-blue-500" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Peak Activity Time</p>
+                <p className="font-medium">
+                  {stats.timeDistribution.reduce((max: TimeDistribution, curr: TimeDistribution) => 
+                    curr.count > max.count ? curr : max
+                  ).hour}:00
+                </p>
+              </div>
+            </div>
+          </div>
+        </CardSection>
+
+        <CardSection
+          title="Content Analysis"
+          description="Message patterns and content types"
+        >
+          <div className="space-y-4">
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <ImageIcon className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Media Ratio</p>
+                <p className="font-medium">
+                  {Math.round((stats.mediaCount / stats.totalMessages) * 100)}% of messages are media
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <div className="p-3 bg-purple-100 rounded-lg">
+                <MessageSquare className="w-5 h-5 text-purple-500" />
+              </div>
+              <div>
+                <p className="text-sm text-gray-500">Average Message Length</p>
+                <p className="font-medium">{stats.averageMessageLength} characters</p>
+              </div>
+            </div>
+          </div>
+        </CardSection>
+
+        <CardSection
+          title="Emoji Usage"
+          description="Most frequently used emojis in the chat"
+          className="md:col-span-2"
+        >
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {Object.entries(stats.emojiCount)
+              .sort(([,a], [,b]) => (b as number) - (a as number))
+              .slice(0, 8)
+              .map(([emoji, count]) => (
+                <div key={emoji} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
+                  <span className="text-2xl">{emoji}</span>
+                  <div>
+                    <p className="font-medium">{count}</p>
+                    <p className="text-xs text-gray-500">times used</p>
+                  </div>
+                </div>
+              ))}
+          </div>
+        </CardSection>
+      </div>
+    </Section>
+  );
+
+  const renderActiveTabContent = () => {
+    switch (activeTab) {
+      case 'overview':
+        return renderOverviewSection();
+      case 'activity':
+        return stats.messagesByDate && renderActivitySection();
+      case 'participants':
+        return renderParticipantsSection();
+      case 'profiles':
+        return renderProfilesSection();
+      case 'insights':
+        return renderInsightsSection();
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="w-full space-y-6">
       {/* Navigation */}
@@ -134,313 +421,10 @@ export function ChatAnalysis({ chatContent }: ChatAnalysisProps) {
         ))}
       </div>
 
-      {/* Overview Section */}
-      {activeTab === 'overview' && (
-        <Section>
-          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <Card className="bg-gradient-to-br from-blue-50 to-white">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-blue-500 rounded-lg">
-                    <MessageSquare className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-blue-500">{stats.totalMessages}</p>
-                    <p className="text-sm text-gray-500">Total Messages</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-green-50 to-white">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-green-500 rounded-lg">
-                    <Users className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-green-500">{stats.participants.length}</p>
-                    <p className="text-sm text-gray-500">Participants</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-purple-50 to-white">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-purple-500 rounded-lg">
-                    <ImageIcon className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-purple-500">{stats.mediaCount}</p>
-                    <p className="text-sm text-gray-500">Media Shared</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-
-            <Card className="bg-gradient-to-br from-orange-50 to-white">
-              <CardContent className="pt-6">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-orange-500 rounded-lg">
-                    <Star className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <p className="text-3xl font-bold text-orange-500">
-                      {stats.averageMessageLength}
-                    </p>
-                    <p className="text-sm text-gray-500">Avg Message Length</p>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-
-          <CardSection>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="flex items-center space-x-3">
-                <CalendarDays className="w-5 h-5 text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Most Active Date</p>
-                  <p className="font-medium">{stats.mostActiveDate.date}</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Moon className="w-5 h-5 text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Late Night Messages</p>
-                  <p className="font-medium">{stats.lateNightPercentage}%</p>
-                </div>
-              </div>
-              <div className="flex items-center space-x-3">
-                <Heart className="w-5 h-5 text-blue-500" />
-                <div>
-                  <p className="text-sm text-gray-500">Most Used Emoji</p>
-                  <p className="font-medium">
-                    {Object.entries(stats.emojiCount)
-                      .sort(([,a], [,b]) => (b as number) - (a as number))[0]?.[0] || 'None'}
-                  </p>
-                </div>
-              </div>
-            </div>
-          </CardSection>
-        </Section>
-      )}
-
-      {/* Activity Section */}
-      {activeTab === 'activity' && stats.messagesByDate && (
-        <Section>
-          <CardSection
-            title="Daily Message Activity"
-            description="Messages sent per day over time"
-          >
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <LineChart data={stats.messagesByDate}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
-                  <Tooltip />
-                  <Line 
-                    type="monotone" 
-                    dataKey="count" 
-                    stroke="#2563eb" 
-                    strokeWidth={2}
-                    dot={false}
-                  />
-                </LineChart>
-              </ResponsiveContainer>
-            </div>
-          </CardSection>
-
-          <CardSection
-            title="Hourly Activity Distribution"
-            description="When are messages most frequently sent?"
-          >
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={stats.timeDistribution}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="hour" />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="count" fill="#3b82f6" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardSection>
-        </Section>
-      )}
-
-      {/* Participants Section */}
-      {activeTab === 'participants' && (
-        <Section>
-          <CardSection
-            title="Message Distribution"
-            description="How much each participant contributed"
-          >
-            <div className="h-[300px]">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={Object.entries(stats.messagesByParticipant).map(([name, value]: [string, number]) => ({
-                      name,
-                      value
-                    }))}
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={100}
-                    fill="#8884d8"
-                    dataKey="value"
-                    label={({ name, percent }: { name: string; percent: number }) => 
-                      `${name} (${(percent * 100).toFixed(0)}%)`}
-                  >
-                    {Object.entries(stats.messagesByParticipant).map((_, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardSection>
-
-          <CardSection
-            title="Participant Rankings"
-            description="Total messages sent by each participant"
-          >
-            <div className="space-y-4">
-              {Object.entries(stats.messagesByParticipant)
-                .sort(([, a], [, b]) => (b as number) - (a as number))
-                .map(([name, count], index) => (
-                  <div key={name} className="flex items-center space-x-4">
-                    <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-medium">
-                      {index + 1}
-                    </div>
-                    <div className="flex-1">
-                      <div className="flex justify-between items-center mb-1">
-                        <span className="font-medium">{name}</span>
-                        <span className="text-gray-500">{count} messages</span>
-                      </div>
-                      <div className="w-full bg-gray-100 rounded-full h-2">
-                        <div
-                          className="bg-blue-500 h-2 rounded-full"
-                          style={{
-                            width: `${(count as number / stats.totalMessages) * 100}%`
-                          }}
-                        />
-                      </div>
-                    </div>
-                  </div>
-                ))}
-            </div>
-          </CardSection>
-        </Section>
-      )}
-
-      {/* Personality Profiles Section */}
-      {activeTab === 'profiles' && profiles && profiles.size > 0 && (
-        <Section>
-          {Array.from(profiles.entries()).map(([userId, profile]: [string, ProfileData]) => {
-            if (!profile) return null;  // Add safety check
-            return (
-              <PersonalityProfile
-                key={userId}
-                userId={userId}
-                profile={profile}
-                metrics={profile.metrics}
-              />
-            );
-          })}
-        </Section>
-      )}
-
-      {/* Insights Section */}
-      {activeTab === 'insights' && (
-        <Section>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <CardSection
-              title="Time Patterns"
-              description="When is the chat most active?"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <Moon className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Night Owl Index</p>
-                    <p className="font-medium">{stats.lateNightPercentage}% messages sent late night</p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-blue-100 rounded-lg">
-                    <Clock className="w-5 h-5 text-blue-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Peak Activity Time</p>
-                    <p className="font-medium">
-                      {stats.timeDistribution.reduce((max: TimeDistribution, curr: TimeDistribution) => 
-                        curr.count > max.count ? curr : max
-                      ).hour}:00
-                    </p>
-                  </div>
-                </div>
-              </div>
-            </CardSection>
-
-            <CardSection
-              title="Content Analysis"
-              description="Message patterns and content types"
-            >
-              <div className="space-y-4">
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <ImageIcon className="w-5 h-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Media Ratio</p>
-                    <p className="font-medium">
-                      {Math.round((stats.mediaCount / stats.totalMessages) * 100)}% of messages are media
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center space-x-4">
-                  <div className="p-3 bg-purple-100 rounded-lg">
-                    <MessageSquare className="w-5 h-5 text-purple-500" />
-                  </div>
-                  <div>
-                    <p className="text-sm text-gray-500">Average Message Length</p>
-                    <p className="font-medium">{stats.averageMessageLength} characters</p>
-                  </div>
-                </div>
-              </div>
-            </CardSection>
-
-            <CardSection
-              title="Emoji Usage"
-              description="Most frequently used emojis in the chat"
-              className="md:col-span-2"
-            >
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {Object.entries(stats.emojiCount)
-                  .sort(([,a], [,b]) => (b as number) - (a as number))
-                  .slice(0, 8)
-                  .map(([emoji, count]) => (
-                    <div key={emoji} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-lg">
-                      <span className="text-2xl">{emoji}</span>
-                      <div>
-                        <p className="font-medium">{count}</p>
-                        <p className="text-xs text-gray-500">times used</p>
-                      </div>
-                    </div>
-                  ))}
-              </div>
-            </CardSection>
-          </div>
-        </Section>
-      )}
+      {/* Active Tab Content */}
+      {renderActiveTabContent()}
     </div>
   );
 }
+
+export default ChatAnalysis;
